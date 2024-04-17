@@ -1,0 +1,38 @@
+
+name: deploy-multi-env.yml
+on:
+  push:
+    branches: [main]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    container:
+      image: python:3.9
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          ref: main
+      - name: Install dependencies
+        run: pip install boto3
+      - name: deploy_staging
+        if: ${{ github.event.branch == 'staging' }}
+        needs: deploy
+        steps:
+          - name: Use AWS credentials
+            uses: aws-actions/configure-aws-credentials@v1
+            with:
+              aws-access-key-id: ${{ secrets.AWS_STAGING_KEY }}
+              aws-secret-access-key: ${{ secrets.AWS_STAGING_SECRET }}
+              aws-region: us-east-1
+          - name: Configure environment variables
+            run: |
+              export ENVIRONMENT=staging
+              python configure_env.py
+      - name: deploy_production
+        if: ${{ github.event.branch == 'master' }}
+        needs: deploy
+        steps:
+          - name: Use AWS credentials
+            uses: aws-actions/configure-aws-credentials@v1
+            with:
+              aws
