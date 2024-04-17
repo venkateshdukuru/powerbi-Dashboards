@@ -1,38 +1,38 @@
+---
+name: docker-build-and-test.yml
 
-name: deploy-multi-env.yml
 on:
   push:
-    branches: [main]
+    branches: [develop]
+
 jobs:
-  deploy:
+  build-image:
     runs-on: ubuntu-latest
-    container:
-      image: python:3.9
     steps:
-      - uses: actions/checkout@v2
+      - name: Checkout Code
+        uses: actions/checkout@v2
+      - name: Set up Docker Build
+        uses: docker/setup-build@v1
         with:
-          ref: main
-      - name: Install dependencies
-        run: pip install boto3
-      - name: deploy_staging
-        if: ${{ github.event.branch == 'staging' }}
-        needs: deploy
-        steps:
-          - name: Use AWS credentials
-            uses: aws-actions/configure-aws-credentials@v1
-            with:
-              aws-access-key-id: ${{ secrets.AWS_STAGING_KEY }}
-              aws-secret-access-key: ${{ secrets.AWS_STAGING_SECRET }}
-              aws-region: us-east-1
-          - name: Configure environment variables
-            run: |
-              export ENVIRONMENT=staging
-              python configure_env.py
-      - name: deploy_production
-        if: ${{ github.event.branch == 'master' }}
-        needs: deploy
-        steps:
-          - name: Use AWS credentials
-            uses: aws-actions/configure-aws-credentials@v1
-            with:
-              aws
+          image: node:16-alpine
+      - name: Install Dependencies
+        run: npm install && npm run build
+      - name: Set up Python Build
+        uses: docker/setup-build@v1
+        with:
+          image: python:3.9
+      - name: Copy Project Directory
+        run: docker cp . my-app
+      - name: Install Python Dependencies
+        run: pip install -r requirements.txt
+      - name: Build Docker Image
+        run: docker build -t my-app:latest .
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Push Image to Docker Hub
+        run: docker push my-app:latest
+
+  run-integration
