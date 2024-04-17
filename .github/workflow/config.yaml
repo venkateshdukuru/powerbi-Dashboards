@@ -1,38 +1,36 @@
----
-name: docker-build-and-test.yml
 
+name: ci.yml
 on:
   push:
-    branches: [develop]
-
+    branches: [main]
 jobs:
-  build-image:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [14.x]
+        python-version: [3.7]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Dependencies
+        run: npm install
+      - name: Linting
+        run: eslint .
+      - name: Unit Tests
+        run: npm test
+      - name: Fail Workflow
+        if: ${{ always() }}
+        run: exit 1
+  coverage-report:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-      - name: Set up Docker Build
-        uses: docker/setup-build@v1
-        with:
-          image: node:16-alpine
+      - uses: actions/checkout@v2
       - name: Install Dependencies
-        run: npm install && npm run build
-      - name: Set up Python Build
-        uses: docker/setup-build@v1
+        run: npm install nyc
+      - name: Generate Report
+        run: nyc report --reporter=lcov
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
         with:
-          image: python:3.9
-      - name: Copy Project Directory
-        run: docker cp . my-app
-      - name: Install Python Dependencies
-        run: pip install -r requirements.txt
-      - name: Build Docker Image
-        run: docker build -t my-app:latest .
-      - name: Login to Docker Hub
-        uses: docker/login-action@v1
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Push Image to Docker Hub
-        run: docker push my-app:latest
-
-  run-integration
+          name: coverage-report
+          path: ./coverage/lcov.info
