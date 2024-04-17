@@ -1,0 +1,23 @@
+Name: deploy-multi-env.yml (Push to main branch)
+
+Jobs:
+
+deploy:
+
+Runs on: ubuntu-latest
+Uses docker image: python:3.9
+Steps:
+Checkout code from main branch
+Install dependencies: pip install boto3
+deploy_staging (if ${{ github.event.branch }} == 'staging')
+
+Needs: deploy (This job waits for the deploy job to finish)
+Steps:
+Use AWS credentials stored in ${{ secrets.AWS_STAGING_KEY }} and ${{ secrets.AWS_STAGING_SECRET }} (stored securely)
+Configure environment variables for staging deployment using boto3
+deploy_production (if ${{ github.event.branch }} == 'master')
+
+Needs: deploy (This job waits for the deploy job to finish)
+Steps:
+Use AWS credentials stored in ${{ secrets.AWS_PRODUCTION_KEY }} and ${{ secrets.AWS_PRODUCTION_SECRET }} (stored securely)
+Configure environment variables for production deployment using boto3
